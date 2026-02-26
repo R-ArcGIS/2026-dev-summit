@@ -1,0 +1,311 @@
+library(mapgl)
+library(shiny)
+library(arcgis)
+library(calcite)
+library(sf)
+library(readr)
+
+# sign into agol
+set_arc_token(auth_user())
+
+furl <- "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Major_Cities_/FeatureServer/0"
+points <- arc_read(furl)
+
+basemap <- esri_style("light-gray", token = arc_token())
+
+ui <- page_actionbar(
+  title = "Incident Upload",
+
+  actions = calcite_action_bar(
+    id = "action_bar",
+    calcite_action_group(
+      calcite_action(
+        text = "Upload",
+        icon = "upload-to",
+        text_enabled = TRUE,
+        active = TRUE
+      ),
+      calcite_action(
+        text = "Analysis",
+        icon = "analysis",
+        text_enabled = TRUE
+      )
+    )
+  ),
+
+  panel_content = list(
+    calcite_panel(
+      id = "upload_panel",
+      heading = "Upload Incident Features",
+
+      calcite_block(
+        heading = "Input Features",
+        expanded = TRUE,
+        collapsible = FALSE,
+        calcite_input_file(
+          id = "csv_file",
+          label_text = "Choose a CSV file",
+          accept = "csv"
+        )
+      ),
+
+      calcite_block(
+        heading = "Geometry",
+        expanded = TRUE,
+        collapsible = FALSE,
+        calcite_notice(
+          id = "col_map_placeholder",
+          open = TRUE,
+          kind = "info",
+          width = "full",
+          message = "Upload a CSV file to map columns."
+        ),
+        uiOutput("column_selects")
+      ),
+
+      calcite_block(
+        id = "summary_block",
+        heading = "Layer Summary",
+        expanded = TRUE,
+        collapsible = FALSE,
+        uiOutput("layer_summary")
+      ),
+
+      footer = tagList(
+        calcite_button(
+          "Validate",
+          id = "validate_btn",
+          icon_start = "check-circle",
+          width = "full",
+          appearance = "outline",
+          disabled = TRUE
+        ),
+        calcite_button(
+          "Upload Features",
+          id = "submit_btn",
+          icon_start = "upload-to",
+          width = "full",
+          disabled = TRUE,
+          appearance = "solid",
+          kind = "brand"
+        )
+      )
+    ),
+
+    calcite_panel(
+      id = "analysis_panel",
+      heading = "Trace Downstream",
+      hidden = TRUE,
+      calcite_block(
+        heading = "Select Area",
+        expanded = TRUE,
+        collapsible = FALSE,
+        calcite_notice(
+          open = TRUE,
+          kind = "info",
+          width = "full",
+          message = "Draw a rectangle on the map to select incident points for downstream trace analysis."
+        ),
+        calcite_button(
+          "Draw Rectangle",
+          id = "draw_btn",
+          icon_start = "rectangle",
+          width = "full",
+          appearance = "outline"
+        )
+      ),
+      footer = tagList(
+        calcite_button(
+          "Run Trace Downstream",
+          id = "trace_btn",
+          icon_start = "play",
+          width = "full",
+          disabled = TRUE,
+          appearance = "solid",
+          kind = "brand"
+        )
+      )
+    )
+  ),
+
+  uiOutput("validation_alert"),
+  maplibreOutput("map", height = "100%")
+)
+
+server <- function(input, output, session) {
+  output$map <- renderMaplibre({
+    maplibre(basemap, bounds = c(-118.5, 33.5, -117.0, 34.5)) |>
+      add_circle_layer(
+        id = "incidents",
+        source = points,
+        circle_color = "#f5a623",
+        circle_radius = 5,
+        circle_opacity = 0.8
+      ) |>
+      add_draw_control(position = "top-right")
+  })
+
+  output$layer_summary <- renderUI({
+    calcite_table(
+      data = data.frame(
+        ` ` = c("Features", "Fields"),
+        `  ` = c("—", "—"),
+        check.names = FALSE
+      ),
+      header = calcite_table_header(NULL),
+      caption = "",
+      bordered = TRUE,
+      scale = "s"
+    )
+  })
+
+  # panel switching
+  panel_actions <- c("Upload", "Analysis")
+  active_panel <- reactiveVal("Upload")
+
+  observeEvent(
+    input$action_bar,
+    {
+      clicked <- input$action_bar
+      if (!clicked %in% panel_actions) {
+        return()
+      }
+      active_panel(clicked)
+      update_calcite("upload_panel", hidden = clicked != "Upload")
+      update_calcite("analysis_panel", hidden = clicked != "Analysis")
+    },
+    ignoreInit = TRUE
+  )
+
+  # read CSV on upload, show column selects and summary
+  uploaded_df <- reactive({
+    req(input$csv_file)
+    readr::read_csv(input$csv_file$datapath[1], show_col_types = FALSE)
+  })
+
+  observeEvent(input$csv_file, {
+    df <- uploaded_df()
+    cols <- colnames(df)
+    n_features <- nrow(df)
+    n_cols <- ncol(df)
+
+    update_calcite("col_map_placeholder", open = FALSE)
+    output$column_selects <- renderUI({
+      tagList(
+        calcite_label(
+          "Select longitude column",
+          calcite_select(
+            id = "lon_col",
+            label = "Longitude",
+            values = cols,
+            labels = cols
+          )
+        ),
+        calcite_label(
+          "Select latitude column",
+          calcite_select(
+            id = "lat_col",
+            label = "Latitude",
+            values = cols,
+            labels = cols
+          )
+        )
+      )
+    })
+
+    output$layer_summary <- renderUI({
+      calcite_table(
+        data = data.frame(
+          property = c("Features", "Fields"),
+          value = c(n_features, n_cols)
+        ),
+        header = calcite_table_header(NULL),
+        caption = "",
+        bordered = TRUE,
+        scale = "s"
+      )
+    })
+
+    update_calcite("validate_btn", disabled = FALSE)
+  })
+
+  # convert to sf and validate on button click
+  observeEvent(input$validate_btn$clicks, {
+    req(input$validate_btn$clicks > 0)
+    req(uploaded_df(), input$lon_col, input$lat_col)
+
+    lon <- input$lon_col$value
+    lat <- input$lat_col$value
+
+    sf_data <- rlang::try_fetch(
+      sf::st_as_sf(uploaded_df(), coords = c(lon, lat), crs = 4326),
+      error = function(cnd) {
+        output$validation_alert <- renderUI({
+          calcite_alert_danger(
+            label = "Validation error",
+            open = TRUE,
+            auto_close = TRUE,
+            auto_close_duration = "slow",
+            title = "Error validating input",
+            message = conditionMessage(cnd),
+            placement = "bottom-end"
+          )
+        })
+        NULL
+      }
+    )
+
+    req(!is.null(sf_data))
+    n <- nrow(sf_data)
+
+    if (n > 100) {
+      output$validation_alert <- renderUI({
+        calcite_alert_warning(
+          label = "Validation warning",
+          open = TRUE,
+          title = "Too many features",
+          message = sprintf(
+            "The input has %s features, which is over the limit of 100.",
+            n
+          ),
+          placement = "bottom-end"
+        )
+      })
+      update_calcite("submit_btn", disabled = TRUE)
+    } else {
+      output$validation_alert <- renderUI({
+        calcite_alert_success(
+          label = "Validation passed",
+          open = TRUE,
+          title = "Validation passed",
+          message = sprintf("%s features ready to upload.", n),
+          placement = "bottom-end"
+        )
+      })
+      update_calcite("submit_btn", disabled = FALSE)
+    }
+  })
+
+  observeEvent(input$submit_btn$clicks, {
+    # arc_gp_job() call goes here once service URL is available
+  })
+
+  # draw mode
+  observeEvent(input$draw_btn$clicks, {
+    maplibre_proxy("map") |>
+      add_draw_control(position = "top-right")
+  })
+
+  observeEvent(input$map_draw_features, {
+    drawn <- input$map_draw_features
+    if (!is.null(drawn) && length(drawn$features) > 0) {
+      update_calcite("trace_btn", disabled = FALSE)
+    }
+  })
+
+  observeEvent(input$trace_btn$clicks, {
+    # trace downstream GP call goes here
+  })
+}
+
+shinyApp(ui, server)
