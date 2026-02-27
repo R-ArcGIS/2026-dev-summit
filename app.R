@@ -323,7 +323,35 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$submit_btn$clicks, {
-    # arc_gp_job() call goes here once service URL is available
+    req(input$submit_btn$clicks > 0)
+    sf <- validated_sf()
+    req(!is.null(sf))
+
+    log_info("starting upload job")
+    status <- upload_features(sf, target, token = NULL)
+    log_info("upload status: {status}")
+
+    if (status == "esriJobSucceeded") {
+      output$validation_alert <- renderUI({
+        calcite_alert_success(
+          label = "Upload success",
+          open = TRUE,
+          title = "Upload succeeded",
+          message = "Features successfully uploaded.",
+          placement = "bottom-end"
+        )
+      })
+    } else {
+      output$validation_alert <- renderUI({
+        calcite_alert_danger(
+          label = "Upload error",
+          open = TRUE,
+          title = "Upload failed",
+          message = sprintf("Job status: %s", status),
+          placement = "bottom-end"
+        )
+      })
+    }
   })
 
   filtered_points <- reactive({

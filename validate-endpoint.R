@@ -5,7 +5,7 @@ set_arc_token(auth_user())
 validate_gp_inputs <- function(input, token = arc_token()) {
   target_features <- list(
     value = list(
-      url = "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/1"
+      url = "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/9"
     )
   )
   input_feature <- list(value = as_featureset(input))
@@ -31,11 +31,12 @@ validate_gp_inputs <- function(input, token = arc_token()) {
     yyjsonr::read_json_str()
 }
 
-# small_pnts <- arc_read(
-#   "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/1"
-# )
+small_pnts <- arc_read(
+  "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/9",
+  token = NULL
+)
 # input <- small_pnts[1:5, ]
-# res <- validate_gp_inputs(input)
+res <- validate_gp_inputs(small_pnts, token = NULL)
 
 # res <-  validate_gp_inputs(all_points, token = NULL)
 # res$validationResults$message[[1]]
