@@ -1,16 +1,23 @@
 library(sf)
-library(readr)
 library(mapgl)
 library(shiny)
-library(shinyjs)
 library(arcgis)
 library(calcite)
+library(shinyjs)
+library(logger)
+
+log_threshold(DEBUG)
+source("validate-endpoint.R")
+
 
 # sign into agol
 set_arc_token(auth_user())
 
-furl <- "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Major_Cities_/FeatureServer/0"
-points <- arc_read(furl)
+# furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/1"
+# points <- arc_read(furl)
+# sf::st_write(points, "data/incidents.fgb")
+
+points <- read_sf("data/incidents.fgb")
 
 basemap <- esri_style("light-gray", token = arc_token())
 
@@ -147,13 +154,13 @@ server <- function(input, output, session) {
   output$map <- renderMaplibre({
     maplibre(
       basemap,
-      bounds = c(-118.5, 33.5, -117.0, 34.5),
+      bounds = points,
       attributionControl = FALSE
     ) |>
       add_circle_layer(
         id = "incidents",
         source = points,
-        circle_color = "#f5a623",
+        circle_color = "#f5a52385",
         circle_radius = 5,
         circle_opacity = 0.8
       ) |>
@@ -271,18 +278,18 @@ server <- function(input, output, session) {
     )
 
     req(!is.null(sf_data))
-    n <- nrow(sf_data)
 
-    if (n > 100) {
+    res <- validate_gp_inputs(sf_data)
+    messages <- res$additionalMessages
+
+    if (nrow(messages) > 0 && any(messages$type %in% c("warning", "error"))) {
+      msg <- messages$description[messages$type %in% c("warning", "error")][1]
       output$validation_alert <- renderUI({
         calcite_alert_warning(
           label = "Validation warning",
           open = TRUE,
           title = "Too many features",
-          message = sprintf(
-            "The input has %s features, which is over the limit of 100.",
-            n
-          ),
+          message = msg,
           placement = "bottom-end"
         )
       })
@@ -293,7 +300,7 @@ server <- function(input, output, session) {
           label = "Validation passed",
           open = TRUE,
           title = "Validation passed",
-          message = sprintf("%s features ready to upload.", n),
+          message = sprintf("%s features ready to upload.", nrow(sf_data)),
           placement = "bottom-end"
         )
       })
@@ -318,9 +325,16 @@ server <- function(input, output, session) {
     update_calcite("trace_btn", disabled = n < 1)
   })
 
+  last_trace_click <- reactiveVal(0)
+
   observeEvent(input$trace_btn$clicks, {
-    req(input$trace_btn$clicks > 0)
-    selected <- filtered_points()
+    clicks <- input$trace_btn$clicks
+    log_info("trace_btn clicks: {clicks}")
+    req(clicks > 0)
+    req(clicks != last_trace_click())
+    last_trace_click(clicks)
+    selected <- isolate(filtered_points())
+    log_info("selected: {nrow(selected)} features")
     req(nrow(selected) > 0)
 
     trace_job <- arc_gp_job$new(
@@ -329,6 +343,7 @@ server <- function(input, output, session) {
         InputPoints = arcgisutils::as_esri_featureset(sf::st_geometry(
           selected
         )),
+        Generalize = "true",
         f = "json"
       ),
       result_fn = arcgisutils::parse_gp_feature_record_set,
@@ -337,18 +352,23 @@ server <- function(input, output, session) {
 
     shinyjs::show("trace_scrim_wrapper")
     update_calcite("trace_btn", disabled = TRUE)
+    log_info("starting job")
     trace_job$start()
+    log_debug("job started, awaiting...")
     result <- trace_job$await()
+    log_info("job complete, hiding scrim")
     shinyjs::hide("trace_scrim_wrapper")
-    update_calcite("trace_btn", disabled = FALSE)
+    log_info("scrim hidden")
 
     maplibre_proxy("map") |>
+      clear_layer("trace_result") |>
       add_line_layer(
         id = "trace_result",
         source = result$geometry,
         line_color = "#0070ff",
         line_width = 3
       )
+    log_info("layer added")
   })
 }
 
