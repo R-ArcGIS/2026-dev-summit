@@ -1,5 +1,6 @@
 library(arcgis)
 
+set_arc_token(auth_user())
 
 validate_gp_inputs <- function(input, token = arc_token()) {
   target_features <- list(
@@ -17,11 +18,11 @@ validate_gp_inputs <- function(input, token = arc_token()) {
   ) |>
     httr2::req_body_form(
       in_features = yyjsonr::write_json_str(
-        target_features,
+        input_feature,
         auto_unbox = TRUE
       ),
       target_features = yyjsonr::write_json_str(
-        input_feature,
+        target_features,
         auto_unbox = TRUE
       )
     ) |>
@@ -35,3 +36,6 @@ validate_gp_inputs <- function(input, token = arc_token()) {
 # )
 # input <- small_pnts[1:5, ]
 # res <- validate_gp_inputs(input)
+
+# res <-  validate_gp_inputs(all_points, token = NULL)
+# res$validationResults$message[[1]]

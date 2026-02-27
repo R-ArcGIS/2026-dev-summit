@@ -207,7 +207,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$csv_file, {
     df <- uploaded_df()
-    cols <- colnames(df)
+    cols <- names(df)[sapply(df, is.numeric)]
     n_features <- nrow(df)
     n_cols <- ncol(df)
 
@@ -279,17 +279,27 @@ server <- function(input, output, session) {
 
     req(!is.null(sf_data))
 
-    res <- validate_gp_inputs(sf_data)
-    messages <- res$additionalMessages
+    maplibre_proxy("map") |>
+      clear_layer("uploaded_points") |>
+      add_circle_layer(
+        id = "uploaded_points",
+        source = sf_data,
+        circle_color = "#0070ff",
+        circle_radius = 5,
+        circle_opacity = 0.8
+      )
 
-    if (nrow(messages) > 0 && any(messages$type %in% c("warning", "error"))) {
-      msg <- messages$description[messages$type %in% c("warning", "error")][1]
+    res <- validate_gp_inputs(sf_data, token = NULL)
+    msg <- res$validationResults$message[[1]]
+    log_debug("validation message: {deparse(msg)}")
+
+    if (!is.null(msg) && msg$type %in% c("warning", "error")) {
       output$validation_alert <- renderUI({
         calcite_alert_warning(
           label = "Validation warning",
           open = TRUE,
           title = "Too many features",
-          message = msg,
+          message = msg$description,
           placement = "bottom-end"
         )
       })
