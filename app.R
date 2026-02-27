@@ -1,9 +1,10 @@
-library(mapgl)
-library(shiny)
-library(arcgis)
-library(calcite)
 library(sf)
 library(readr)
+library(mapgl)
+library(shiny)
+library(shinyjs)
+library(arcgis)
+library(calcite)
 
 # sign into agol
 set_arc_token(auth_user())
@@ -15,6 +16,7 @@ basemap <- esri_style("light-gray", token = arc_token())
 
 ui <- page_actionbar(
   title = "Incident Upload",
+  useShinyjs(),
 
   actions = calcite_action_bar(
     id = "action_bar",
@@ -96,6 +98,11 @@ ui <- page_actionbar(
       id = "analysis_panel",
       heading = "Trace Downstream",
       hidden = TRUE,
+      htmltools::div(
+        id = "trace_scrim_wrapper",
+        style = "display: none;",
+        calcite_scrim(id = "trace_scrim", loading = TRUE)
+      ),
       calcite_block(
         heading = "Select Area",
         expanded = TRUE,
@@ -104,14 +111,19 @@ ui <- page_actionbar(
           open = TRUE,
           kind = "info",
           width = "full",
-          message = "Draw a rectangle on the map to select incident points for downstream trace analysis."
-        ),
-        calcite_button(
-          "Draw Rectangle",
-          id = "draw_btn",
-          icon_start = "rectangle",
-          width = "full",
-          appearance = "outline"
+          message = "Draw a polygon on the map to select incidents."
+        )
+      ),
+      calcite_block(
+        heading = "Selection Summary",
+        expanded = TRUE,
+        collapsible = FALSE,
+        calcite_tile(
+          id = "selected_tile",
+          icon = "map-pin",
+          heading = "Selected incidents",
+          description = "0",
+          scale = "s"
         )
       ),
       footer = tagList(
@@ -120,7 +132,6 @@ ui <- page_actionbar(
           id = "trace_btn",
           icon_start = "play",
           width = "full",
-          disabled = TRUE,
           appearance = "solid",
           kind = "brand"
         )
@@ -134,7 +145,11 @@ ui <- page_actionbar(
 
 server <- function(input, output, session) {
   output$map <- renderMaplibre({
-    maplibre(basemap, bounds = c(-118.5, 33.5, -117.0, 34.5)) |>
+    maplibre(
+      basemap,
+      bounds = c(-118.5, 33.5, -117.0, 34.5),
+      attributionControl = FALSE
+    ) |>
       add_circle_layer(
         id = "incidents",
         source = points,
@@ -290,21 +305,50 @@ server <- function(input, output, session) {
     # arc_gp_job() call goes here once service URL is available
   })
 
-  # draw mode
-  observeEvent(input$draw_btn$clicks, {
-    maplibre_proxy("map") |>
-      add_draw_control(position = "top-right")
+  filtered_points <- reactive({
+    drawn <- get_drawn_features(maplibre_proxy("map"))
+    req(!is.null(drawn), nrow(drawn) > 0)
+    sf::st_transform(drawn, sf::st_crs(points)) |>
+      (\(d) sf::st_filter(points, d))()
   })
 
-  observeEvent(input$map_draw_features, {
-    drawn <- input$map_draw_features
-    if (!is.null(drawn) && length(drawn$features) > 0) {
-      update_calcite("trace_btn", disabled = FALSE)
-    }
+  observe({
+    n <- tryCatch(nrow(filtered_points()), error = function(e) 0)
+    update_calcite("selected_tile", description = as.character(n))
+    update_calcite("trace_btn", disabled = n < 1)
   })
 
   observeEvent(input$trace_btn$clicks, {
-    # trace downstream GP call goes here
+    req(input$trace_btn$clicks > 0)
+    selected <- filtered_points()
+    req(nrow(selected) > 0)
+
+    trace_job <- arc_gp_job$new(
+      base_url = "https://hydro.arcgis.com/arcgis/rest/services/Tools/Hydrology/GPServer/TraceDownstream",
+      params = list(
+        InputPoints = arcgisutils::as_esri_featureset(sf::st_geometry(
+          selected
+        )),
+        f = "json"
+      ),
+      result_fn = arcgisutils::parse_gp_feature_record_set,
+      token = arc_token()
+    )
+
+    shinyjs::show("trace_scrim_wrapper")
+    update_calcite("trace_btn", disabled = TRUE)
+    trace_job$start()
+    result <- trace_job$await()
+    shinyjs::hide("trace_scrim_wrapper")
+    update_calcite("trace_btn", disabled = FALSE)
+
+    maplibre_proxy("map") |>
+      add_line_layer(
+        id = "trace_result",
+        source = result$geometry,
+        line_color = "#0070ff",
+        line_width = 3
+      )
   })
 }
 
