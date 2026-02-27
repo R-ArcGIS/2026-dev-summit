@@ -14,11 +14,10 @@ source("upload.R")
 # sign into agol
 set_arc_token(auth_user())
 
-# furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/1"
-# points <- arc_read(furl)
+furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/9"
 # sf::st_write(points, "data/incidents.fgb")
 
-points <- read_sf("data/incidents.fgb")
+# points <- read_sf("data/incidents.fgb")
 
 basemap <- esri_style("light-gray", token = arc_token())
 
@@ -148,21 +147,40 @@ ui <- page_actionbar(
   ),
 
   uiOutput("validation_alert"),
-  maplibreOutput("map", height = "100%")
+  htmltools::div(
+    style = "position: relative; height: 100%;",
+    maplibreOutput("map", height = "100%"),
+    htmltools::div(
+      id = "map_scrim_wrapper",
+      style = "display: none; position: absolute; inset: 0;",
+      calcite_scrim(id = "map_scrim", loading = TRUE)
+    )
+  )
 )
+
+placeholder_summary <- function() {
+  calcite_table(
+    data = data.frame(property = c("Features", "Fields"), value = c("—", "—")),
+    header = calcite_table_header(NULL),
+    caption = "",
+    bordered = TRUE,
+    scale = "s"
+  )
+}
 
 server <- function(input, output, session) {
   validated_sf <- reactiveVal(NULL)
+  points_rv <- reactiveVal(arc_read(furl, token = NULL))
 
   output$map <- renderMaplibre({
     maplibre(
       basemap,
-      bounds = points,
+      bounds = points_rv(),
       attributionControl = FALSE
     ) |>
       add_circle_layer(
         id = "incidents",
-        source = points,
+        source = points_rv(),
         circle_color = "#f5a52385",
         circle_radius = 5,
         circle_opacity = 0.8
@@ -171,17 +189,7 @@ server <- function(input, output, session) {
   })
 
   output$layer_summary <- renderUI({
-    calcite_table(
-      data = data.frame(
-        ` ` = c("Features", "Fields"),
-        `  ` = c("—", "—"),
-        check.names = FALSE
-      ),
-      header = calcite_table_header(NULL),
-      caption = "",
-      bordered = TRUE,
-      scale = "s"
-    )
+    placeholder_summary()
   })
 
   # panel switching
@@ -254,9 +262,14 @@ server <- function(input, output, session) {
     update_calcite("validate_btn", disabled = FALSE)
   })
 
+  last_validate_click <- reactiveVal(0)
+
   # convert to sf and validate on button click
   observeEvent(input$validate_btn$clicks, {
-    req(input$validate_btn$clicks > 0)
+    clicks <- input$validate_btn$clicks
+    req(clicks > 0)
+    req(clicks != last_validate_click())
+    last_validate_click(clicks)
     req(uploaded_df(), input$lon_col, input$lat_col)
 
     lon <- input$lon_col$value
@@ -322,11 +335,17 @@ server <- function(input, output, session) {
     }
   })
 
+  last_submit_click <- reactiveVal(0)
+
   observeEvent(input$submit_btn$clicks, {
-    req(input$submit_btn$clicks > 0)
+    clicks <- input$submit_btn$clicks
+    req(clicks > 0)
+    req(clicks != last_submit_click())
+    last_submit_click(clicks)
     sf <- validated_sf()
     req(!is.null(sf))
 
+    shinyjs::show("map_scrim_wrapper")
     log_info("starting upload job")
     status <- upload_features(sf, target, token = NULL)
     log_info("upload status: {status}")
@@ -340,6 +359,34 @@ server <- function(input, output, session) {
           message = "Features successfully uploaded.",
           placement = "bottom-end"
         )
+      })
+
+      log_info("reloading points from service")
+      points_rv(arc_read(furl, token = NULL))
+      log_info("points reloaded: {nrow(points_rv())} features")
+      log_info("clearing layers and re-adding incidents")
+      maplibre_proxy("map") |>
+        clear_layer("uploaded_points") |>
+        clear_layer("incidents") |>
+        add_circle_layer(
+          id = "incidents",
+          source = points_rv(),
+          circle_color = "#f5a52385",
+          circle_radius = 5,
+          circle_opacity = 0.8
+        )
+      log_info("layers updated")
+      shinyjs::hide("map_scrim_wrapper")
+
+      validated_sf(NULL)
+      update_calcite("validate_btn", disabled = TRUE)
+      update_calcite("submit_btn", disabled = TRUE)
+      update_calcite("col_map_placeholder", open = TRUE)
+      output$column_selects <- renderUI({
+        NULL
+      })
+      output$layer_summary <- renderUI({
+        placeholder_summary()
       })
     } else {
       output$validation_alert <- renderUI({
@@ -357,8 +404,8 @@ server <- function(input, output, session) {
   filtered_points <- reactive({
     drawn <- get_drawn_features(maplibre_proxy("map"))
     req(!is.null(drawn), nrow(drawn) > 0)
-    sf::st_transform(drawn, sf::st_crs(points)) |>
-      (\(d) sf::st_filter(points, d))()
+    sf::st_transform(drawn, sf::st_crs(points_rv())) |>
+      (\(d) sf::st_filter(points_rv(), d))()
   })
 
   observe({
