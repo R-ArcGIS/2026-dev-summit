@@ -8,6 +8,7 @@ library(logger)
 
 log_threshold(DEBUG)
 source("validate-endpoint.R")
+source("upload.R")
 
 
 # sign into agol
@@ -151,6 +152,8 @@ ui <- page_actionbar(
 )
 
 server <- function(input, output, session) {
+  validated_sf <- reactiveVal(NULL)
+
   output$map <- renderMaplibre({
     maplibre(
       basemap,
@@ -278,6 +281,7 @@ server <- function(input, output, session) {
     )
 
     req(!is.null(sf_data))
+    validated_sf(sf_data)
 
     maplibre_proxy("map") |>
       clear_layer("uploaded_points") |>
