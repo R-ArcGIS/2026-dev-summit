@@ -1,45 +1,29 @@
 # R-ArcGIS Bridge Plenary
 
-Duration: 90 seconds
+Duration: 1 minute 45 seconds
 
 Audience: Esri's 2026 Developer Summit. In the crowd are mostly IT admins, web developers, data scientists, and other people that program in various langauges like Java, JavaScript, Kotlin, Swift, Python, Rust, etc. We cannot assume that everyone knows what R is or what the R-ArcGIS Bridge is. We need to be subtle, clear, and quick when we discuss these things.
 
 
 ## Preceding Demo
-This 90 second demo will immediately follow a 90 second presentation that demonstrates publishing web tools from ArcGIS pro to ArcGIS Enterprise.
-They will demonstrate the new "Validate" feature and endpoint from the deployed webtool. This is a new endpoint which lets you use validate arguments before to the GP service before you use it. 
 
+Web tools allow anyone to run geoprocessing workflows | built in Python or ModelBuilder as a service | across Pro, Enterprise, and the web.
 
-Drafted talk:
-The below is taken from a drafted word doc from my colleague
+But when users bring inconsistent data, tools can fail. 
 
-- Web tools allow anyone to run geoprocessing workflows built in Python or ModelBuilder as a service across Pro, Enterprise, and the web. 
-- But when users bring inconsistent data, tools can fail.  
-- I’ll show how custom web tool validation catches issues before the tool runs, improving the tool user experience, decreasing server load, and bringing equivalency with custom Python tools in Pro. 
-- This Python toolbox is used by analysts in our organization to upload data to an enterprise geodatabase after checking it for expected schema and data quality.  
-Tool validation lets you customize tool behaviors including showing and hiding parameters, updating choice lists, changing default values, and raising custom error messages before run time. This tool’s validation raises an error when the number of features to upload is inappropriate.  
+I’ll show how you can publish a custom web tool with validation to catch issues before the tool runs
+This Python toolbox is used by analysts in our organization to upload oil spill data to an enterprise geodatabase after checking it for expected schema and data quality. 
+This tool’s validation raises an error when the extent is outside of the Washington State boundary.
+The Python toolbox works great in Pro, now I want to run the same workflow from a web app. So I am publishing it as a web tool. 
+In Pro 3.7 you can publish directly from the toolbox, no need to run it first. I will select the whole Python toolbox to publish.
+In the Sharing pane, under Configurations,I enable the Validate capability And publish
+While that publishes, here are some new features that were just created by an analyst that need to be uploaded.
+let’s test the web tool here in Pro before sharing it with others. Web tools appear in the Catalog Portal tab.
+I’ll choose the input features to upload and click validate. The custom error tells me that I’m uploading too many features. This quick check was run on the server using the custom Python code authored for the Pro tool and published to my server. 
+Let me fix the input and choose the extent of the city.  Click Validate again, everything checks out and I’m ready to upload this dataset.
+Validation catches issues early improving the web tool user experience, protects your server, and helps ensure reliable results.
+Next, Josiah will now demonstrate using this same web tool and the validation service from Ra web application built with R.
 
- 
-
- 
-
-(Alternative checks 
-
-Check if certain fields are present 
-
-If fields has the correct type, like ID should be GPLong instead of String etc 
-
-Geometry type  check) 
-
-The Python toolbox works great in Pro, now I want to run the same workflow from a web app. So I am publishing it as a web tool.  
-In Pro 3.7 you can publish directly from the toolbox, no need to run it first. I will select the whole Python toolbox to publish. 
-In the Sharing pane, under Configurations,I enable the Validate capability And publish 
-While that publishes, here are some new features that were just created by an analyst that need to be uploaded. 
-let’s test the web tool here in Pro before sharing it with others. Web tools appear in the Catalog Portal tab. 
-i’ll choose the input features to upload and click validate. The custom error tells me that I’m uploading too many features. This quick check was run on the server using the custom Python code authored for the Pro tool and published to my server. 
-Let me fix the input and choose the extent of the city.  Click Validate again, everything checks out and I’m ready to upload this dataset. 
-Validation catches issues early improving the web tool user experience, protects your server, and helps ensure reliable results. 
-Next, Josiah will now demonstrate using this same web tool and the validation service from Ra web application built with R. 
 
 ## R-ArcGIS Bridge Demo
 
@@ -67,142 +51,66 @@ We have begun building out hand-crafted shiny bindings to the Calcite Design sys
 
 -----
 
-## Script outline
-
-summary: show the GP service called in R code first, then switch to a Shiny app with Calcite UI wrapping the same call. The validate endpoint is the thread connecting both halves to Simon's demo.
+## Script
 
 
-I will be using Positron as my editor.
+0:00–0:20
+
+- *Positron open with a short standalone R script, ~6 lines. Run it. Console shows the result.*
+- Thanks Simon!
+- I'm an avid R user and developer of the R-ArcGIS Bridge. With our newest release, we can interact with geoprocessing services natively from R
+- meaning we can leverage Simon's workflow regardless of our programming language of choice.
+- Here I'm validating a set of features against Simon's service in a handful of lines of R.
+
+0:20–0:35
+
+- *Switch to Shiny app running in browser. Map visible, incidents plotted, Calcite sidebar on left. Address bar hidden.*
+- While we R users are a mathy bunch, we also love building data-driven applications. 
+- Here I've built a custom web app in R to aid in incident reporting
+- it is built using the newest package in R-ArcGIS Bridge whiche which brings the lets us leverage the calcie Design system directly making it **look** and **feel** like it's part of the ArcGIS system
+
+0:35–1:10
+
+- *Upload panel active. Upload a CSV with features outside the expected spatial extent.*
+- I've got some new spill incidents to upload.
+- *Load the CSV. Columns auto-populate. Summary appears.*
+- before i can upload anything, we need to validate our dataset 
+- *Click Validate.*
+- rather than reinventing the validation logic in our app, this is calling simon's service directly
+- *Warning alert fires—wrong spatial extent.*
+- our app captured and reported the message from the GP service directly
+- *Swap to correct CSV.*
+- now we will upload the correct data
+- and ensure it falls within the state of washington's extent
+- *points are validated successfully*
+- now that we have successfully validated our data we can begin the upload
+- *Click Upload Features. Scrim briefly. Points merge into map.*
+- Features uploaded.
+
+1:10–1:35
+
+- *Switch to Analysis panel.*
+- We can also call analysis services directly using the new GP service support
+- *Draw a polygon around the newly uploaded points.*
+- Now I'll select a handful of incidents I just added and run trace downstream
+- *Click Run Trace Downstream. Brief loading.*
+- We're now calling the Trace Downstream Hydrology service and awwaiting the results
+- *Line shows up on map*
+- The results flow right back into our app.
+
+1:35–1:45
+
+- *Trace result on screen.*
+- With the R-ArcGIS Bridge, we can now call geoprocessing services natively from R.
+- And with our new Calcite design system R package, we can build applications that fit right into the ArcGIS ecosystem.
 
 ---
 
-Time: 0:00-0:10
-Visual: Simon's published service on screen
-Script: Thank you, Simon. GP services are a language-agnostic way to deploy and distribute bespoke functionality to developers of any language.
+## Pre-demo setup checklist
 
-Time: 0:10-0:25
-Visual: Positron with a short R script, run it, result in the console
-Script: I'm an avid R user and developer of the R-ArcGIS Bridge. With our newest release, we support geoprocessing services directly. We can leverage Simon's workflow without reinventing the wheel.
-
-Time: 0:25-1:05
-Visual: Switch to running Shiny app with Calcite UI, trigger validation with a bad input, fix it, submit, show result
-Script: R users are a mathy bunch, but we also love building data-driven applications using the Shiny framework. The R-ArcGIS Bridge now integrates with Esri's Calcite Design System, so we can build full stack apps in R that fit right into the Esri ecosystem. We can even integrate Simon's validation directly into our own application.
-
-something something about the app
-
-Time: 1:05-1:15
-Visual: Result on screen
-Script: Web tools enable users of any language to harness complex workflows in the ArcGIS system. The R-ArcGIS Bridge continues to grow and integrate directly into this system.
-
-
-----
-
-- langauge agnostic way to sahre complex workflows
-- im r user 
-- newest release of r-bridge suports geoprocessing services directly
-- we can leverage simons workflow without reinventing the wheel
-- r users are mathy bunch but also love building data-driven applications using the shiny framework
-- the r-arcgis bridge has also released an integration with Esri's calcite design system
-- we can build full stack apps in R the fit hte brand blahblah
-- we can integrate simons validation and tooling into our own bespoke application
-- the validation endpoint is now part of our application
-- web tools enable users of all langauges to harness complex workflows in the arcgis system
-- the R-ArcGIS Bridge continues to grow and integrate directly into this sytem.
-
-
-----
-
-Two arguments
-input features:
-  - the smaller layer
-target features: 
-  - the thing we are inserting into
-
-## GP Service definition
-  
-```json
-{
-"displayName": "Upload",
-"executionType": "esriExecutionTypeAsynchronous",
-"name": "UploadFeatureClassToGDB",
-"description": "Append features from an input layer to a target layer (enterprise/file GDB). Uses GPFeatureRecordSetLayer for both input and target. Describe-only validation with dynamic extent checks (Percent Overlap by default).",
-"helpUrl": "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/directories/arcgisoutput/Upload_GPServer/Upload/UploadFeatureClassToGDB.htm",
-"category": "",
-"parameters": [
-  {
-   "parameterType": "esriGPParameterTypeRequired",
-   "displayName": "Input Features (Layer)",
-   "defaultValue": {},
-   "dataType": "GPFeatureRecordSetLayer",
-   "name": "in_features",
-   "description": "",
-   "category": "",
-   "direction": "esriGPParameterDirectionInput"
-  },
-  {
-   "parameterType": "esriGPParameterTypeRequired",
-   "displayName": "Target Features (Layer)",
-   "defaultValue": {},
-   "dataType": "GPFeatureRecordSetLayer",
-   "name": "target_features",
-   "description": "",
-   "category": "",
-   "direction": "esriGPParameterDirectionInput"
-  },
-  {
-   "parameterType": "esriGPParameterTypeDerived",
-   "displayName": "Upload Status",
-   "defaultValue": null,
-   "dataType": "GPBoolean",
-   "name": "status",
-   "description": "",
-   "category": "",
-   "direction": "esriGPParameterDirectionOutput"
-  }
-]
-}
-```
-
-
-## Example validation input
-```json
-{
-"validationResults": [
-{
-"isAltered": true,
-"hasBeenValidated": true,
-"isEnabled": true,
-"name": "in_features",
-"message": {
-"code": 0,
-"description": "The input has 2359 feature, which is over 100.",
-"type": "warning"
-},
-"value": {"url": "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/1"}
-},
-{
-"isAltered": false,
-"hasBeenValidated": true,
-"isEnabled": true,
-"name": "target_features",
-"message": {
-"code": 735,
-"description": "ERROR 000735: Target Features (Layer): Value is required",
-"type": "error"
-}
-},
-{
-"isAltered": false,
-"hasBeenValidated": true,
-"isEnabled": true,
-"name": "status",
-"value": null
-}
-],
-"additionalMessages": [{
-"code": 735,
-"description": "The input has 2359 feature, which is over 100.\nERROR 000735: Target Features (Layer): Value is required",
-"type": "error"
-}]
-}
-```
+- [ ] Positron open with short standalone R script (not `app.R`)
+- [ ] Shiny app already running in browser, address bar hidden
+- [ ] Map centered on data extent, incidents visible and styled
+- [ ] Two CSVs ready: one that fails (wrong spatial extent), one that passes (correct location, small)
+- [ ] Know exactly which uploaded point to draw around for the trace
+- [ ] Coordinate symbology color with Simon beforehand
