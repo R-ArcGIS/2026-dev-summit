@@ -58,18 +58,24 @@ We have begun building out hand-crafted shiny bindings to the Calcite Design sys
 
 - *Positron open with a short standalone R script, ~6 lines. Run it. Console shows the result.*
 - Thanks Simon!
-- I'm the developer of the R-ArcGIS Bridge.
--  With our newest release, we can interact with geoprocessing services natively from R
-- meaning we can leverage Simon's workflow regardless of our programming language of choice.
-- Here I'm validating a set of features against Simon's service in a handful of lines of R.
+- Many data scientists and researchers leverage R in their work.
+- Today I'm going to show two new capabilities that bring the ArcGIS system and R closer together 
+- the latest release of the R-ArcGIS bridge introduces web tool support
+  - and bindings to the calcite design system
+- {need transition}
+- *run reading of points*
+- i'm going to validate new incidents against Simon's service
+- *run the validate line*
+- using the webtool support
 
 0:20–0:35
 
 - *show shiny app R script*
-- While we R users are a mathy bunch, we also love building data-driven applications. 
+- While we R users are a mathy bunch, we also love building data-driven applications using the shiny framework.
+  - ^ highlight `library(shiny)`
+- the calcite package makes our apps look and feel like part of the ArcGIS system
 - *Switch to Shiny app running in browser. Map visible, incidents plotted, Calcite sidebar on left. Address bar hidden.*
-- Here I've built a custom web app in R to aid in incident reporting
-- it is built using the newest package in R-ArcGIS Bridge whiche which brings the lets us leverage the calcie Design system directly making it **look** and **feel** like it's part of the ArcGIS system
+- I've built a custom web app in R to aid in incident reporting
 
 0:35–1:10
 
@@ -78,33 +84,28 @@ We have begun building out hand-crafted shiny bindings to the Calcite Design sys
 - *Load the CSV. Columns auto-populate. Summary appears.*
 - before i can upload anything, we need to validate our dataset 
 - *Click Validate.*
-- rather than reinventing the validation logic in our app, this is calling simon's service directly
+- rather than reinventing the validation logic in our app, this is calling simon's web tool directly
 - *Warning alert fires—wrong spatial extent.*
-- our app captured and reported the message from the GP service
+- our app captured and reported the message from the service
 - *Swap to correct CSV.*
 - now we will upload the correct data
-- and ensure it falls within the state of washington's extent
+- and ensure it falls within the the expected extent
 - *points are validated successfully*
-- now that we have successfully validated our data we can begin the upload
+- after passing validation, we can successully run our tool
+
+
+1:10 - 2:00
+
 - *Click Upload Features. Scrim briefly. Points merge into map.*
-- Features uploaded.
-
-1:10–1:35
-
+- support for webtools means we can also tap into ready to use analysis services
 - *Switch to Analysis panel.*
-- We can also call analysis services directly using the new GP service support
 - *Draw a polygon around the newly uploaded points.*
 - I'll select a handful of incidents I just added and run trace downstream
 - *Click Run Trace Downstream. Brief loading.*
-- We're now calling the Trace Downstream Hydrology service and awwaiting the results
-- *Line shows up on map*
-- The results flow right back into our app.
-
-1:35–1:45
-
+- We're now calling the Trace Downstream Hydrology service and waiting for the results to flow right back into our app
 - *Trace result on screen.*
 - With the R-ArcGIS Bridge, we can now call geoprocessing services natively from R.
-- And with our new Calcite design system R package, we can build applications that fit right into the ArcGIS ecosystem.
+- And with our new  Calcite design integration, we can build applications that fit right into the ArcGIS ecosystem.
 
 ---
 

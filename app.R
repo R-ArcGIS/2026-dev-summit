@@ -10,7 +10,7 @@ library(calcite) # 👈🏼 new!
 set_arc_token(auth_user())
 
 # basemap
-basemap <- esri_style("light-gray", token = arc_token())
+basemap <- esri_style("outdoor", token = arc_token())
 
 ui <- page_actionbar(
   title = "Incident Upload",
@@ -163,7 +163,7 @@ source("upload.R")
 source("validate-endpoint.R")
 
 # washington incidents
-furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/SDE_ReportedSpillsToWater/FeatureServer/6"
+furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/ContaminationSites/FeatureServer/0"
 
 server <- function(input, output, session) {
   validated_sf <- reactiveVal(NULL)
@@ -315,7 +315,7 @@ server <- function(input, output, session) {
         calcite_alert_warning(
           label = "Validation warning",
           open = TRUE,
-          title = "Too many features",
+          title = "Validation error",
           message = msg$description,
           placement = "bottom-end"
         )
