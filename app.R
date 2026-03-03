@@ -2,23 +2,14 @@ library(sf)
 library(mapgl)
 library(shiny)
 library(arcgis)
-library(calcite)
-library(shinyjs)
 library(logger)
-
-log_threshold(DEBUG)
-source("validate-endpoint.R")
-source("upload.R")
-
+library(shinyjs)
+library(calcite) # 👈🏼 new!
 
 # sign into agol
 set_arc_token(auth_user())
 
-furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/Hosted/env_small_spill_investigations/FeatureServer/9"
-# sf::st_write(points, "data/incidents.fgb")
-
-# points <- read_sf("data/incidents.fgb")
-
+# basemap
 basemap <- esri_style("light-gray", token = arc_token())
 
 ui <- page_actionbar(
@@ -168,6 +159,12 @@ placeholder_summary <- function() {
   )
 }
 
+source("upload.R")
+source("validate-endpoint.R")
+
+# washington incidents
+furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/SDE_ReportedSpillsToWater/FeatureServer/6"
+
 server <- function(input, output, session) {
   validated_sf <- reactiveVal(NULL)
   points_rv <- reactiveVal(arc_read(furl, token = NULL))
@@ -175,7 +172,8 @@ server <- function(input, output, session) {
   output$map <- renderMaplibre({
     maplibre(
       basemap,
-      bounds = points_rv(),
+      center = c(-122.4531654, 47.5977935),
+      zoom = 10,
       attributionControl = FALSE
     ) |>
       add_circle_layer(
@@ -231,7 +229,8 @@ server <- function(input, output, session) {
             id = "lon_col",
             label = "Longitude",
             values = cols,
-            labels = cols
+            labels = cols,
+            value = if ("X" %in% cols) "X" else NULL
           )
         ),
         calcite_label(
@@ -240,7 +239,8 @@ server <- function(input, output, session) {
             id = "lat_col",
             label = "Latitude",
             values = cols,
-            labels = cols
+            labels = cols,
+            value = if ("Y" %in% cols) "Y" else NULL
           )
         )
       )
@@ -306,7 +306,7 @@ server <- function(input, output, session) {
         circle_opacity = 0.8
       )
 
-    res <- validate_gp_inputs(sf_data, token = NULL)
+    res <- validate_gp_inputs(sf_data)
     msg <- res$validationResults$message[[1]]
     log_debug("validation message: {deparse(msg)}")
 

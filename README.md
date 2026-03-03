@@ -58,14 +58,16 @@ We have begun building out hand-crafted shiny bindings to the Calcite Design sys
 
 - *Positron open with a short standalone R script, ~6 lines. Run it. Console shows the result.*
 - Thanks Simon!
-- I'm an avid R user and developer of the R-ArcGIS Bridge. With our newest release, we can interact with geoprocessing services natively from R
+- I'm the developer of the R-ArcGIS Bridge.
+-  With our newest release, we can interact with geoprocessing services natively from R
 - meaning we can leverage Simon's workflow regardless of our programming language of choice.
 - Here I'm validating a set of features against Simon's service in a handful of lines of R.
 
 0:20–0:35
 
-- *Switch to Shiny app running in browser. Map visible, incidents plotted, Calcite sidebar on left. Address bar hidden.*
+- *show shiny app R script*
 - While we R users are a mathy bunch, we also love building data-driven applications. 
+- *Switch to Shiny app running in browser. Map visible, incidents plotted, Calcite sidebar on left. Address bar hidden.*
 - Here I've built a custom web app in R to aid in incident reporting
 - it is built using the newest package in R-ArcGIS Bridge whiche which brings the lets us leverage the calcie Design system directly making it **look** and **feel** like it's part of the ArcGIS system
 
@@ -78,7 +80,7 @@ We have begun building out hand-crafted shiny bindings to the Calcite Design sys
 - *Click Validate.*
 - rather than reinventing the validation logic in our app, this is calling simon's service directly
 - *Warning alert fires—wrong spatial extent.*
-- our app captured and reported the message from the GP service directly
+- our app captured and reported the message from the GP service
 - *Swap to correct CSV.*
 - now we will upload the correct data
 - and ensure it falls within the state of washington's extent
@@ -92,7 +94,7 @@ We have begun building out hand-crafted shiny bindings to the Calcite Design sys
 - *Switch to Analysis panel.*
 - We can also call analysis services directly using the new GP service support
 - *Draw a polygon around the newly uploaded points.*
-- Now I'll select a handful of incidents I just added and run trace downstream
+- I'll select a handful of incidents I just added and run trace downstream
 - *Click Run Trace Downstream. Brief loading.*
 - We're now calling the Trace Downstream Hydrology service and awwaiting the results
 - *Line shows up on map*
