@@ -1,20 +1,10 @@
-library(sf)
-library(mapgl)
 library(shiny)
 library(arcgis)
-library(logger)
-library(shinyjs)
 library(calcite) # 👈🏼 new!
-
-# sign into agol
-set_arc_token(auth_user())
-
-# basemap
-basemap <- esri_style("outdoor", token = arc_token())
 
 ui <- page_actionbar(
   title = "Incident Upload",
-  useShinyjs(),
+  shinyjs::useShinyjs(),
 
   actions = calcite_action_bar(
     id = "action_bar",
@@ -140,7 +130,7 @@ ui <- page_actionbar(
   uiOutput("validation_alert"),
   htmltools::div(
     style = "position: relative; height: 100%;",
-    maplibreOutput("map", height = "100%"),
+    mapgl::maplibreOutput("map", height = "100%"),
     htmltools::div(
       id = "map_scrim_wrapper",
       style = "display: none; position: absolute; inset: 0;",
@@ -170,16 +160,16 @@ server <- function(input, output, session) {
   points_rv <- reactiveVal(arc_read(furl, token = NULL))
 
   output$map <- renderMaplibre({
-    maplibre(
-      basemap,
-      center = c(-122.4531654, 47.5977935),
+    mapgl::maplibre(
+      mapgl::esri_style("outdoor", token = auth_user()),
+      center = c(-85.8804793, 43.7213087),
       zoom = 10,
       attributionControl = FALSE
     ) |>
       add_circle_layer(
         id = "incidents",
         source = points_rv(),
-        circle_color = "#f5a52385",
+        circle_color = "#145cd185",
         circle_radius = 5,
         circle_opacity = 0.8
       ) |>
@@ -276,7 +266,7 @@ server <- function(input, output, session) {
     lat <- input$lat_col$value
 
     sf_data <- rlang::try_fetch(
-      sf::st_as_sf(uploaded_df(), coords = c(lon, lat), crs = 4326),
+      sf::st_as_sf(uploaded_df(), coords = c(lon, lat), crs = 6497),
       error = function(cnd) {
         output$validation_alert <- renderUI({
           calcite_alert_danger(
@@ -296,9 +286,9 @@ server <- function(input, output, session) {
     req(!is.null(sf_data))
     validated_sf(sf_data)
 
-    maplibre_proxy("map") |>
-      clear_layer("uploaded_points") |>
-      add_circle_layer(
+    mapgl::maplibre_proxy("map") |>
+      mapgl::clear_layer("uploaded_points") |>
+      mapgl::add_circle_layer(
         id = "uploaded_points",
         source = sf_data,
         circle_color = "#0070ff",
@@ -308,7 +298,7 @@ server <- function(input, output, session) {
 
     res <- validate_gp_inputs(sf_data)
     msg <- res$validationResults$message[[1]]
-    log_debug("validation message: {deparse(msg)}")
+    logger::log_debug("validation message: {deparse(msg)}")
 
     if (!is.null(msg) && msg$type %in% c("warning", "error")) {
       output$validation_alert <- renderUI({
@@ -346,9 +336,9 @@ server <- function(input, output, session) {
     req(!is.null(sf))
 
     shinyjs::show("map_scrim_wrapper")
-    log_info("starting upload job")
+    logger::log_info("starting upload job")
     status <- upload_features(sf, target, token = NULL)
-    log_info("upload status: {status}")
+    logger::log_info("upload status: {status}")
 
     if (status == "esriJobSucceeded") {
       output$validation_alert <- renderUI({
@@ -361,21 +351,21 @@ server <- function(input, output, session) {
         )
       })
 
-      log_info("reloading points from service")
+      logger::log_info("reloading points from service")
       points_rv(arc_read(furl, token = NULL))
-      log_info("points reloaded: {nrow(points_rv())} features")
-      log_info("clearing layers and re-adding incidents")
-      maplibre_proxy("map") |>
-        clear_layer("uploaded_points") |>
-        clear_layer("incidents") |>
-        add_circle_layer(
+      logger::log_info("points reloaded: {nrow(points_rv())} features")
+      logger::log_info("clearing layers and re-adding incidents")
+      mapgl::maplibre_proxy("map") |>
+        mapgl::clear_layer("uploaded_points") |>
+        mapgl::clear_layer("incidents") |>
+        mapgl::add_circle_layer(
           id = "incidents",
           source = points_rv(),
           circle_color = "#f5a52385",
           circle_radius = 5,
           circle_opacity = 0.8
         )
-      log_info("layers updated")
+      logger::log_info("layers updated")
       shinyjs::hide("map_scrim_wrapper")
 
       validated_sf(NULL)
@@ -402,7 +392,7 @@ server <- function(input, output, session) {
   })
 
   filtered_points <- reactive({
-    drawn <- get_drawn_features(maplibre_proxy("map"))
+    drawn <- mapgl::get_drawn_features(mapgl::maplibre_proxy("map"))
     req(!is.null(drawn), nrow(drawn) > 0)
     sf::st_transform(drawn, sf::st_crs(points_rv())) |>
       (\(d) sf::st_filter(points_rv(), d))()
@@ -418,19 +408,26 @@ server <- function(input, output, session) {
 
   observeEvent(input$trace_btn$clicks, {
     clicks <- input$trace_btn$clicks
-    log_info("trace_btn clicks: {clicks}")
+    logger::log_info("trace_btn clicks: {clicks}")
     req(clicks > 0)
     req(clicks != last_trace_click())
     last_trace_click(clicks)
     selected <- isolate(filtered_points())
-    log_info("selected: {nrow(selected)} features")
+    logger::log_info("selected: {nrow(selected)} features")
     req(nrow(selected) > 0)
+
+    selected_4326 <- sf::st_transform(selected, 4326)
+    # browser()
+    logger::log_info(
+      "selected coords: {paste(sf::st_coordinates(selected_4326), collapse = ', ')}"
+    )
 
     trace_job <- arc_gp_job$new(
       base_url = "https://hydro.arcgis.com/arcgis/rest/services/Tools/Hydrology/GPServer/TraceDownstream",
       params = list(
-        InputPoints = arcgisutils::as_esri_featureset(sf::st_geometry(
-          selected
+        InputPoints = arcgisutils::as_esri_featureset(sf::st_cast(
+          selected_4326,
+          "POINT"
         )),
         Generalize = "true",
         f = "json"
@@ -441,23 +438,23 @@ server <- function(input, output, session) {
 
     shinyjs::show("trace_scrim_wrapper")
     update_calcite("trace_btn", disabled = TRUE)
-    log_info("starting job")
+    logger::log_info("starting job")
     trace_job$start()
-    log_debug("job started, awaiting...")
+    logger::log_debug("job started, awaiting...")
     result <- trace_job$await()
-    log_info("job complete, hiding scrim")
+    logger::log_info("job complete, hiding scrim")
     shinyjs::hide("trace_scrim_wrapper")
-    log_info("scrim hidden")
+    logger::log_info("scrim hidden")
 
-    maplibre_proxy("map") |>
-      clear_layer("trace_result") |>
-      add_line_layer(
+    mapgl::maplibre_proxy("map") |>
+      mapgl::clear_layer("trace_result") |>
+      mapgl::add_line_layer(
         id = "trace_result",
         source = result$geometry,
         line_color = "#0070ff",
         line_width = 3
       )
-    log_info("layer added")
+    logger::log_info("layer added")
   })
 }
 
