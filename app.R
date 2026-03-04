@@ -297,7 +297,10 @@ server <- function(input, output, session) {
       )
     })
 
+    shinyjs::show("validate_btn")
     update_calcite("validate_btn", disabled = FALSE)
+    shinyjs::hide("submit_btn")
+    validated_sf(NULL)
   })
 
   last_validate_click <- reactiveVal(0)
