@@ -2,9 +2,13 @@ library(shiny)
 library(arcgis)
 library(calcite) # 👈🏼 new!
 
+# sign into agol
+set_arc_token(auth_user())
+
 ui <- page_actionbar(
   title = "Incident Upload",
   shinyjs::useShinyjs(),
+  tags$style(".maplibregl-ctrl-top-right { display: none !important; }"),
 
   actions = calcite_action_bar(
     id = "action_bar",
@@ -20,7 +24,7 @@ ui <- page_actionbar(
         icon = "analysis",
         text_enabled = TRUE
       )
-    )
+    ),
   ),
 
   panel_content = list(
@@ -70,15 +74,14 @@ ui <- page_actionbar(
           appearance = "outline",
           disabled = TRUE
         ),
-        calcite_button(
+        shinyjs::hidden(calcite_button(
           "Upload Features",
           id = "submit_btn",
           icon_start = "upload-to",
           width = "full",
-          disabled = TRUE,
           appearance = "solid",
           kind = "brand"
-        )
+        ))
       )
     ),
 
@@ -99,8 +102,8 @@ ui <- page_actionbar(
           open = TRUE,
           kind = "info",
           width = "full",
-          message = "Draw a polygon on the map to select incidents."
-        )
+          message = "Draw a rectangle on the map to select incidents."
+        ),
       ),
       calcite_block(
         heading = "Selection Summary",
@@ -127,10 +130,44 @@ ui <- page_actionbar(
     )
   ),
 
+  tags$script(htmltools::HTML(
+    "
+    Shiny.addCustomMessageHandler('draw_rectangle', function(msg) {
+      document.querySelector('.mapbox-gl-draw_rectangle').click();
+    });
+    Shiny.addCustomMessageHandler('draw_trash', function(msg) {
+      document.querySelector('.mapbox-gl-draw_trash').click();
+    });
+  "
+  )),
+
   uiOutput("validation_alert"),
   htmltools::div(
     style = "position: relative; height: 100%;",
     mapgl::maplibreOutput("map", height = "100%"),
+    htmltools::div(
+      style = "position: absolute; top: 10px; right: 10px; z-index: 10;",
+      calcite_action_bar(
+        id = "map_action_bar",
+        expand_disabled = TRUE,
+        scale = "s",
+        calcite_action_group(
+          scale = "s",
+          calcite_action(
+            id = "draw_rect_action",
+            text = "Select Area",
+            icon = "rectangle-plus",
+            scale = "s"
+          ),
+          calcite_action(
+            id = "trash_action",
+            text = "Delete",
+            icon = "trash",
+            scale = "s"
+          )
+        )
+      )
+    ),
     htmltools::div(
       id = "map_scrim_wrapper",
       style = "display: none; position: absolute; inset: 0;",
@@ -159,21 +196,32 @@ server <- function(input, output, session) {
   validated_sf <- reactiveVal(NULL)
   points_rv <- reactiveVal(arc_read(furl, token = NULL))
 
-  output$map <- renderMaplibre({
+  output$map <- mapgl::renderMaplibre({
     mapgl::maplibre(
-      mapgl::esri_style("outdoor", token = auth_user()),
+      mapgl::esri_style("outdoor", token = arc_token()),
       center = c(-85.8804793, 43.7213087),
       zoom = 10,
       attributionControl = FALSE
     ) |>
-      add_circle_layer(
+      mapgl::add_circle_layer(
         id = "incidents",
         source = points_rv(),
-        circle_color = "#145cd185",
+        circle_color = "#e91e8cc0",
         circle_radius = 5,
         circle_opacity = 0.8
       ) |>
-      add_draw_control(position = "top-right")
+      mapgl::add_draw_control(
+        position = "top-right",
+        rectangle = TRUE,
+        controls = list(
+          point = FALSE,
+          line_string = FALSE,
+          polygon = FALSE,
+          trash = TRUE,
+          combine_features = FALSE,
+          uncombine_features = FALSE
+        )
+      )
   })
 
   output$layer_summary <- renderUI({
@@ -291,7 +339,7 @@ server <- function(input, output, session) {
       mapgl::add_circle_layer(
         id = "uploaded_points",
         source = sf_data,
-        circle_color = "#0070ff",
+        circle_color = "#ffff00",
         circle_radius = 5,
         circle_opacity = 0.8
       )
@@ -310,7 +358,7 @@ server <- function(input, output, session) {
           placement = "bottom-end"
         )
       })
-      update_calcite("submit_btn", disabled = TRUE)
+      # keep validate visible, hide submit
     } else {
       output$validation_alert <- renderUI({
         calcite_alert_success(
@@ -321,7 +369,8 @@ server <- function(input, output, session) {
           placement = "bottom-end"
         )
       })
-      update_calcite("submit_btn", disabled = FALSE)
+      shinyjs::hide("validate_btn")
+      shinyjs::show("submit_btn")
     }
   })
 
@@ -361,7 +410,7 @@ server <- function(input, output, session) {
         mapgl::add_circle_layer(
           id = "incidents",
           source = points_rv(),
-          circle_color = "#f5a52385",
+          circle_color = "#e91e8cc0",
           circle_radius = 5,
           circle_opacity = 0.8
         )
@@ -369,8 +418,9 @@ server <- function(input, output, session) {
       shinyjs::hide("map_scrim_wrapper")
 
       validated_sf(NULL)
+      shinyjs::show("validate_btn")
       update_calcite("validate_btn", disabled = TRUE)
-      update_calcite("submit_btn", disabled = TRUE)
+      shinyjs::hide("submit_btn")
       update_calcite("col_map_placeholder", open = TRUE)
       output$column_selects <- renderUI({
         NULL
@@ -389,6 +439,14 @@ server <- function(input, output, session) {
         )
       })
     }
+  })
+
+  observeEvent(input$draw_rect_action$clicked, {
+    session$sendCustomMessage("draw_rectangle", list())
+  })
+
+  observeEvent(input$trash_action$clicked, {
+    session$sendCustomMessage("draw_trash", list())
   })
 
   filtered_points <- reactive({

@@ -15,9 +15,9 @@ upload_features <- function(input, target, token = NULL) {
     token = token
   )
   job$start()
-  log_info(paste(capture.output(print(job)), collapse = "\n"))
+  logger::log_info(paste(capture.output(print(job)), collapse = "\n"))
   job$await()
-  log_info(paste(capture.output(print(job)), collapse = "\n"))
+  logger::log_info(paste(capture.output(print(job)), collapse = "\n"))
   job$status@status
 }
 
