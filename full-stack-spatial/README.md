@@ -1,47 +1,32 @@
 # Full-Stack Spatial with R and ArcGIS
 
+**Abstract**:
 
-## Outline: 
+> Learn how to leverage the full breadth of the R-ArcGIS Bridge from feature service management, scalable geocoding, and building beautiful web applications with Shiny and the Calcite Design System. This technical session demonstrates reading data from your web-based services, authentication strategies, searching your portal, and scalable geocoding. The session culminates by integrating these into a Shiny web application that shows how spatial data scientists can seamlessly connect R's analytical capabilities with ArcGIS data and services to create comprehensive workflows leveraging the R ecosystem.
 
-- what is the R-ArcGIS Bridge
-- the ecosystem
-- llms.txt files for AI coding assistance
-- this workshop will be focused on building apps using 5 pkgs:
-  - arcgisutils - for auth, portal, misc other utils 
-  - arcgislayers - reading data
-  - calcite - 
-  - shiny
-  - mapgl
-- approaches to authentication
+## Pre-requisites
 
-## App ideas?
+This workshop will use the following R packages:
 
-- Side bar with search that uses arcgisgeocode for suggest
-  - new points get added to the map
-  - use mapgl to get point id
-  - add pop-up table for the selected point?
-- Geocoding tables from the app?
-  - login as a user
-  - list tables from portal
-  - read table
-  - geocode
-  - have download address csv
-- 
+- arcgisutils
+- arcgislayers
+- arcgisgeocode
+- calcite
+- shiny
+- mapgl
 
+```r
+install.packages(
+  c("arcgisutils", "arcgislayers", "arcgisgeocode", "calcite", "mapgl")
+)
+```
 
------
+## LLM contexts
 
-## Misc notes: 
+We recognize that AI is part of the development experience these days. As such we have provided `llms.txt` files for some of our packages: 
 
-Two parts to most web applications and shiny is no different. 
-There is the server and the client. 
-Client is the web browser
-Server is what is actually doing the computation 
-The client runs client specific application code. This is where all of the stuff that defines the ui is. 
-HTML css and JavaScript 
-The sever is where the R code actually runs. 
-How do these communicate? They use something called websockets. The client code sends information through this connection. The server is actively listening. These messages get captured and processed by R 
-R also can send information back through these websockets.
-Events and updates
-Using inputs in the server functions. So how do we connect the server to the client? Ui? We give the ui elements unique IDs
-Creating layouts using page functions.
+- arcgisutils: https://r.esri.com/arcgisutils/llms.txt
+- arcgislayers: https://r.esri.com/arcgislayers/llms.txt
+- arcgisgeocode: https://r.esri.com/arcgisgeocode/llms.txt
+- calcite: https://r.esri.com/calcite/llms.txt
+- mapgl: https://walker-data.com/mapgl/llms.txt

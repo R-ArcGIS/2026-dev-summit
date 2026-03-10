@@ -2,13 +2,12 @@ library(shiny)
 library(arcgis)
 library(calcite) # 👈🏼 new!
 
-# sign into agol
+# sign into AGOL
 set_arc_token(auth_user())
 
 ui <- page_actionbar(
   title = "Incident Upload",
   shinyjs::useShinyjs(),
-  tags$style(".maplibregl-ctrl-top-right { display: none !important; }"),
 
   actions = calcite_action_bar(
     id = "action_bar",
@@ -129,7 +128,7 @@ ui <- page_actionbar(
       )
     )
   ),
-
+  tags$style(".maplibregl-ctrl-top-right { display: none !important; }"),
   tags$script(htmltools::HTML(
     "
     Shiny.addCustomMessageHandler('draw_rectangle', function(msg) {
@@ -189,6 +188,9 @@ placeholder_summary <- function() {
 source("upload.R")
 source("validate-endpoint.R")
 
+incident_circle_color <- "#FFAA00"
+incident_color_border <- "#A87000"
+
 # washington incidents
 furl <- "https://dev2026gpservice.westus.cloudapp.azure.com/server/rest/services/ContaminationSites/FeatureServer/0"
 
@@ -198,7 +200,7 @@ server <- function(input, output, session) {
 
   output$map <- mapgl::renderMaplibre({
     mapgl::maplibre(
-      mapgl::esri_style("outdoor", token = arc_token()),
+      mapgl::esri_style("oceans", token = arc_token()),
       center = c(-85.8804793, 43.7213087),
       zoom = 10,
       attributionControl = FALSE
@@ -206,7 +208,9 @@ server <- function(input, output, session) {
       mapgl::add_circle_layer(
         id = "incidents",
         source = points_rv(),
-        circle_color = "#e91e8cc0",
+        circle_color = incident_circle_color,
+        circle_stroke_color = incident_color_border,
+        circle_stroke_width = 0.2,
         circle_radius = 5,
         circle_opacity = 0.8
       ) |>
@@ -342,8 +346,10 @@ server <- function(input, output, session) {
       mapgl::add_circle_layer(
         id = "uploaded_points",
         source = sf_data,
-        circle_color = "#ffff00",
-        circle_radius = 5,
+        circle_color = "#A900E6",
+        circle_radius = 7,
+        circle_stroke_color = "#4C0073",
+        circle_stroke_width = 0.5,
         circle_opacity = 0.8
       )
 
