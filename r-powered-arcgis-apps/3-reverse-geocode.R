@@ -10,8 +10,16 @@ to_upload <- geocoded |>
     State = region_abbr,
     Country = country_code
   ) |>
-  mutate(Facility_Type = "DevSummit")
+  mutate(Facility_Type = "DevSummit") |>
+  st_transform(3857)
 
 to_upload
 
 add_res <- add_features(ev_layer, to_upload)
+add_res
+
+# delete the feature
+# delete_res <- delete_features(
+#   ev_layer,
+#   where = "Facility_Type = 'DevSummit'"
+# )
