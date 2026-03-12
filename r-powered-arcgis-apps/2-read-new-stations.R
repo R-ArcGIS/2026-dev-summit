@@ -15,7 +15,6 @@ select(self$groups, id, title, snippet)
 group <- arc_group("857070a5ce37454ea0ead28075efb304")
 group
 
-
 all_group_items <- arc_group_content(group)
 
 # preview group items
@@ -33,6 +32,8 @@ csv_portal_item <- all_csvs |>
   pull(id) |>
   arc_open()
 
+csv_portal_item
+
 # get the data for it
 new_ev_stations_raw <- arc_item_data(csv_portal_item) |>
   # convert to character vector
@@ -44,6 +45,6 @@ new_sf <- new_ev_stations_raw |>
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
 # view with existing
-maplibre() |>
+maplibre(style = basemap) |>
   add_circle_layer(id = "existing", all_stations, circle_color = "#6b0aac") |>
   add_circle_layer(id = "new", new_sf, circle_color = "#fca421")

@@ -18,7 +18,7 @@ to_upload
 add_res <- add_features(ev_layer, to_upload)
 add_res
 
-# delete the feature
+# delete the features
 # delete_res <- delete_features(
 #   ev_layer,
 #   where = "Facility_Type = 'DevSummit'"
