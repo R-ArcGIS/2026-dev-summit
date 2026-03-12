@@ -1,0 +1,32 @@
+# Slides Checklist — Part 2
+
+---
+
+- [ ] **"The Backend is Done"** — 3 bullets: arcgislayers/arcgisutils/arcgisgeocode = backend; lives in your console; make it shareable
+- [ ] **"How do we share it?"** — 3 bullets: reports? slides? interactive apps; enter Shiny
+- [ ] **Title + full-stack diagram** — recreate the hand-drawn image: browser ↔ Shiny ↔ R-ArcGIS packages; label `{calcite}+{mapgl}` on the front end, `{arcgislayers}{arcgisgeocode}{arcgisutils}` on the back
+- [ ] **"Two sides to every web app"** — 2 bullets: client = browser (HTML/CSS/JS, no idea R exists); server = where R runs
+- [ ] **"How do they talk?"** — 2 bullets: persistent connection, messages flow both directions; browser sends → R reacts → sends back
+- [ ] **"You don't write any of that"** — 1 bullet + code block (`ui`, `server`, `shinyApp()`)
+- [ ] **"input and output"** — 2 bullets: `input$id` reads what the user did; `output$id` sends something back
+- [ ] **Side-by-side screenshot** — ArcGIS Online or Field Maps on the left, plain base Shiny app on the right; caption: "Native Shiny doesn't look like Esri"
+- [ ] **"Calcite Design System"** — 3 bullets: Esri's design system; `{calcite}` brings it to Shiny; your app looks native to the ecosystem
+- [ ] **Layout hierarchy diagram** — nested boxes: `page_sidebar()` → `calcite_panel()` → `calcite_block()` → your inputs; one-line description of each level
+- [ ] **"The Pattern"** — 2 bullets: give every input an `id`; read `input$id` in the server
+- [ ] **`1-shiny-anatomy.R`** — code only; `page_sidebar()` creates the shell, `shinyApp()` launches it
+- [ ] **`2-calcite-panel.R`** — code only; `calcite_panel()` gives regions a heading and boundary; `sidebar` arg docks to the left
+- [ ] **`3-calcite-block.R`** — code only; `calcite_block()` creates labeled collapsible sections; `expanded = TRUE` starts it open
+- [ ] **`4-slider-ui.R`** — code only; `calcite_slider()` args (`id`, `min`, `max`, `value`, `label_text`); server intentionally empty
+- [ ] **`5-slider-server.R`** — code + annotated output showing the list; `verbatimTextOutput()` + `renderPrint()` closes the loop; calcite returns lists not scalars — use `$value`
+- [ ] **`6-button.R`** — code only; `calcite_button()`; `input$btn$clicks` increments on each press
+- [ ] **`7-select.R`** — code + annotated output; `values` vs `labels`; `input$pick$value` vs `input$pick$selectedOption$label`
+- [ ] **"Reacting to inputs"** — 3 bullets: re-rendering is bad for maps; `observeEvent()` runs code when input changes without re-rendering; `req()` guards against NULL on startup
+- [ ] **`observeEvent()` + `set_filter()` code** — code only; `maplibre_proxy()` gives a handle to the live map; `set_filter()` updates visible features; filter expression syntax `list(">=", get_column(...), ...)`
+- [ ] **"What is mapgl?"** — 4 bullets: R package by Kyle Walker; MapLibre access; works in R/Quarto/Shiny; Esri basemaps via `esri_style()` + `auth_user()`
+- [ ] **"Key mapgl functions"** — 4 bullets: `maplibre()`; `esri_style()`; `add_circle_layer()`; `maplibreOutput()`/`renderMaplibre()`
+- [ ] **`8-mapgl.R` code** — code only; skip `calcite_block()` for maps; `style = "height: 100%"` on panel + `height = "100%"` on output = full height
+- [ ] **"Putting it all together"** — 3 bullets: real Feature Server data; Calcite layout with slider + select; proxy + `set_filter()` for smooth filtering
+- [ ] **`9-map-points.R`** — code + screenshot; `arc_read()` from Feature Server; `add_circle_layer(source = cities)`; `bounds = cities` auto-zooms
+- [ ] **`10-map-filter-slider.R`** — code + screenshot; `observeEvent()` on slider; proxy + `set_filter()`; map never re-renders
+- [ ] **`11-map-filter-select.R`** — code + screenshot; `sort(unique(...))` derives select values; `list("all", ...)` combines two filter conditions; `req()` guards NULL
+- [ ] **Full-stack diagram** — same diagram from the opening; close the loop
