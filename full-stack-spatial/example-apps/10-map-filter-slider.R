@@ -34,7 +34,10 @@ ui <- page_sidebar(
 
 server <- function(input, output) {
   output$map <- renderMaplibre({
-    maplibre(style = esri_style("streets", token = auth_user()), bounds = cities) |>
+    maplibre(
+      style = esri_style("streets", token = auth_user()),
+      bounds = cities
+    ) |>
       add_circle_layer(
         id = "cities",
         source = cities,
@@ -47,7 +50,11 @@ server <- function(input, output) {
     maplibre_proxy("map") |>
       set_filter(
         "cities",
-        list(">=", get_column("POPULATION"), input$min_pop$value)
+        list(
+          ">=",
+          get_column("POPULATION"),
+          input$min_pop$value
+        )
       )
   })
 }

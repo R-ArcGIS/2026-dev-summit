@@ -1,8 +1,6 @@
 library(shiny)
 library(calcite)
 
-# focus: just building the UI, server does nothing yet
-
 ui <- page_sidebar(
   sidebar = calcite_panel(
     heading = "Controls",

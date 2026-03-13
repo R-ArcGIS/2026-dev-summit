@@ -8,6 +8,9 @@ cities <- arc_read(
   "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Major_Cities_/FeatureServer/0"
 )
 
+# create a basemap style
+basemap <- esri_style("streets", token = auth_user())
+
 ui <- page_sidebar(
   sidebar = calcite_panel(
     heading = "Controls"
@@ -21,7 +24,7 @@ ui <- page_sidebar(
 
 server <- function(input, output) {
   output$map <- renderMaplibre({
-    maplibre(style = esri_style("streets", token = auth_user()), bounds = cities) |>
+    maplibre(style = basemap, bounds = cities) |>
       add_circle_layer(
         id = "cities",
         source = cities,

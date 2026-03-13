@@ -1,8 +1,6 @@
 library(shiny)
 library(calcite)
 
-# focus: now we connect the slider to the server via input$my_slider
-
 ui <- page_sidebar(
   sidebar = calcite_panel(
     heading = "Controls",
